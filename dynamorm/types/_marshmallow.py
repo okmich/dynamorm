@@ -1,7 +1,6 @@
-import six
-from pkg_resources import parse_version
+from packaging.version import Version
 
-from marshmallow import Schema as MarshmallowSchema
+from marshmallow import Schema as MarshmallowSchema, EXCLUDE
 from marshmallow.exceptions import MarshmallowError
 from marshmallow import fields, __version__ as marshmallow_version
 
@@ -9,15 +8,15 @@ from .base import DynamORMSchema
 from ..exceptions import ValidationError
 
 # Define different validation logic depending on the version of marshmallow we're using
-if parse_version(marshmallow_version) >= parse_version("3.0.0a1"):
+if Version(marshmallow_version) >= Version("3.0.0a1"):
 
     def _validate(cls, obj, partial=False, native=False):
         """Validate using a Marshmallow v3+ schema"""
         try:
             if native:
-                data = cls().load(obj, partial=partial, unknown="EXCLUDE")
+                data = cls().load(obj, partial=partial, unknown=EXCLUDE)
             else:
-                data = cls(partial=partial, unknown="EXCLUDE").dump(obj)
+                data = cls(partial=partial, unknown=EXCLUDE).dump(obj)
         except MarshmallowError as e:
             raise ValidationError(obj, cls.__name__, e)
         return data
@@ -60,7 +59,7 @@ class Schema(MarshmallowSchema, DynamORMSchema):
         # When asking for partial native objects (during model init) we want to return None values
         # This ensures our object has all attributes and we can track partial saves properly
         if partial and native:
-            for name in six.iterkeys(cls().fields):
+            for name in cls().fields.keys():
                 if name not in data:
                     data[name] = None
 

@@ -45,15 +45,10 @@ import logging
 import time
 import warnings
 from collections import defaultdict, OrderedDict
-
-try:
-    from collections.abc import Iterable, Mapping
-except ImportError:
-    from collections import Iterable, Mapping
+from collections.abc import Iterable, Mapping
 
 import boto3
 import botocore
-import six
 
 from boto3.dynamodb.conditions import Key, Attr
 from dynamorm.exceptions import (
@@ -195,7 +190,7 @@ class DynamoTable3(DynamoCommon3):
 
         self.indexes = {}
         if indexes:
-            for name, klass in six.iteritems(indexes):
+            for name, klass in indexes.items():
                 # Our indexes are just uninstantiated classes, but what we are interested in is what their parent class
                 # name is.  We can reach into the MRO to find that out, and then determine our own index type.
                 index_type = klass.__mro__[1].__name__
@@ -207,7 +202,7 @@ class DynamoTable3(DynamoCommon3):
                     name,
                     (index_class,),
                     dict(
-                        (k, v) for k, v in six.iteritems(klass.__dict__) if k[0] != "_"
+                        (k, v) for k, v in klass.__dict__.items() if k[0] != "_"
                     ),
                 )
 
@@ -243,7 +238,7 @@ class DynamoTable3(DynamoCommon3):
 
         boto3_session = boto3.Session(**(cls.session_kwargs or {}))
 
-        for key, val in six.iteritems(cls.resource_kwargs or {}):
+        for key, val in (cls.resource_kwargs or {}).items():
             kwargs.setdefault(key, val)
 
         # allow for dict based resource config that we convert into a botocore Config object
@@ -301,7 +296,7 @@ class DynamoTable3(DynamoCommon3):
         """Return the attribute fields for a given index, or all indexes if omitted"""
         fields = set()
 
-        for index in six.itervalues(self.indexes):
+        for index in self.indexes.values():
             if index_name and index.name != index_name:
                 continue
 
@@ -355,7 +350,7 @@ class DynamoTable3(DynamoCommon3):
             )
 
         index_args = defaultdict(list)
-        for index in six.itervalues(self.indexes):
+        for index in self.indexes.values():
             index_args[index.ARG_KEY].append(index.index_args)
 
         log.info("Creating table %s", self.name)
@@ -462,7 +457,7 @@ class DynamoTable3(DynamoCommon3):
                 self.name,
                 dict(
                     (k, v)
-                    for k, v in six.iteritems(table.provisioned_throughput)
+                    for k, v in table.provisioned_throughput.items()
                     if k.endswith("Units")
                 ),
                 self.provisioned_throughput,
@@ -505,7 +500,7 @@ class DynamoTable3(DynamoCommon3):
 
             existing_indexes[index["IndexName"]] = index
 
-        for index in six.itervalues(self.indexes):
+        for index in self.indexes.values():
             if index.name in existing_indexes:
                 current_capacity = existing_indexes[index.name]["ProvisionedThroughput"]
                 if (index.read and index.write) and (
@@ -641,7 +636,7 @@ class DynamoTable3(DynamoCommon3):
                 for part_id, part_name in enumerate(parts)
             ]
         )
-        field_name = ".".join(six.iterkeys(field_expr_names))
+        field_name = ".".join(field_expr_names.keys())
 
         return (
             UPDATE_FUNCTION_TEMPLATES[function].format(
@@ -654,7 +649,7 @@ class DynamoTable3(DynamoCommon3):
     def update(self, update_item_kwargs=None, conditions=None, **kwargs):
         # copy update_item_kwargs, so that we don't mutate the original later on
         update_item_kwargs = dict(
-            (k, v) for k, v in six.iteritems(update_item_kwargs or {})
+            (k, v) for k, v in (update_item_kwargs or {}).items()
         )
         conditions = conditions or {}
         update_fields = []
@@ -722,12 +717,12 @@ class DynamoTable3(DynamoCommon3):
     def get_batch(self, keys, consistent=False, attrs=None, batch_get_kwargs=None):
         # copy batch_get_kwargs, so that we don't mutate the original later on
         batch_get_kwargs = dict(
-            (k, v) for k, v in six.iteritems(batch_get_kwargs or {})
+            (k, v) for k, v in (batch_get_kwargs or {}).items()
         )
 
         batch_get_kwargs["Keys"] = []
         for kwargs in keys:
-            for k, v in six.iteritems(kwargs):
+            for k, v in kwargs.items():
                 if k not in self.schema.dynamorm_fields():
                     raise InvalidSchemaField(
                         "{0} does not exist in the schema fields".format(k)
@@ -757,9 +752,9 @@ class DynamoTable3(DynamoCommon3):
 
     def get(self, consistent=False, get_item_kwargs=None, **kwargs):
         # copy get_item_kwargs, so that we don't mutate the original later on
-        get_item_kwargs = dict((k, v) for k, v in six.iteritems(get_item_kwargs or {}))
+        get_item_kwargs = dict((k, v) for k, v in (get_item_kwargs or {}).items())
 
-        for k, v in six.iteritems(kwargs):
+        for k, v in kwargs.items():
             if k not in self.schema.dynamorm_fields():
                 raise InvalidSchemaField(
                     "{0} does not exist in the schema fields".format(k)
@@ -777,7 +772,7 @@ class DynamoTable3(DynamoCommon3):
     def query(self, *args, **kwargs):
         # copy query_kwargs, so that we don't mutate the original later on
         query_kwargs = dict(
-            (k, v) for k, v in six.iteritems(kwargs.pop("query_kwargs", {}))
+            (k, v) for k, v in kwargs.pop("query_kwargs", {}).items()
         )
         filter_kwargs = {}
 
@@ -830,7 +825,7 @@ class DynamoTable3(DynamoCommon3):
     def scan(self, *args, **kwargs):
         # copy scan_kwargs, so that we don't mutate the original later on
         scan_kwargs = dict(
-            (k, v) for k, v in six.iteritems(kwargs.pop("scan_kwargs", {}))
+            (k, v) for k, v in kwargs.pop("scan_kwargs", {}).items()
         )
 
         filter_expression = Q(**kwargs)
@@ -856,7 +851,7 @@ def remove_nones(in_dict):
     try:
         return dict(
             (key, remove_nones(val))
-            for key, val in six.iteritems(in_dict)
+            for key, val in in_dict.items()
             if val is not None
         )
     except (ValueError, AttributeError):
@@ -914,7 +909,7 @@ def Q(**mapping):
     return expression
 
 
-class ReadIterator(six.Iterator):
+class ReadIterator:
     """ReadIterator provides an iterator object that wraps a model and a method (either scan or query).
 
     Since it is an object we can attach attributes and functions to it that are useful to the caller.

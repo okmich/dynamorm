@@ -6,8 +6,6 @@ import inspect
 import logging
 import sys
 
-import six
-
 from .exceptions import DynaModelException
 from .indexes import Index
 from .relationships import Relationship
@@ -66,13 +64,13 @@ class DynaModelMeta(type):
         # collect our indexes & relationships
         indexes = dict(
             (name, val)
-            for name, val in six.iteritems(attrs)
+            for name, val in attrs.items()
             if inspect.isclass(val) and issubclass(val, Index)
         )
 
         attrs["relationships"] = dict(
             (name, val)
-            for name, val in six.iteritems(attrs)
+            for name, val in attrs.items()
             if isinstance(val, Relationship)
         )
 
@@ -119,11 +117,11 @@ class DynaModelMeta(type):
 
         # Put the instantiated indexes back into our attrs.  We instantiate the Index class that's in the attrs and
         # provide the actual Index object from our table as the parameter.
-        for name, klass in six.iteritems(indexes):
+        for name, klass in indexes.items():
             index = klass(model, model.Table.indexes[klass.name])
             setattr(model, name, index)
 
-        for relationship in six.itervalues(model.relationships):
+        for relationship in model.relationships.values():
             relationship.set_this_model(model)
 
         model_prepared.send(model)
@@ -131,8 +129,7 @@ class DynaModelMeta(type):
         return model
 
 
-@six.add_metaclass(DynaModelMeta)
-class DynaModel(object):
+class DynaModel(object, metaclass=DynaModelMeta):
     """``DynaModel`` is the base class all of your models will extend from.  This model definition encapsulates the
     parameters used to create and manage the table as well as the schema for validating and marshalling data into object
     attributes.  It will also hold any custom business logic you need for your objects.
@@ -206,7 +203,7 @@ class DynaModel(object):
         # from raw (since it would be ignored when validating anyway), and instead leverage the relationship to
         # determine if we should add any new values to raw to represent the relationship
         relationships = {}
-        for name, relationship in six.iteritems(self.relationships):
+        for name, relationship in self.relationships.items():
             new_value = raw.pop(name, None)
             if new_value is not None:
                 relationships[name] = new_value
@@ -219,10 +216,10 @@ class DynaModel(object):
         self._validated_data = self.Schema.dynamorm_validate(
             raw, partial=partial, native=True
         )
-        for k, v in six.iteritems(self._validated_data):
+        for k, v in self._validated_data.items():
             setattr(self, k, v)
 
-        for k, v in six.iteritems(relationships):
+        for k, v in relationships.items():
             setattr(self, k, v)
 
         post_init.send(self.__class__, instance=self, partial=partial, raw=raw)
@@ -298,9 +295,7 @@ class DynaModel(object):
         kwargs.update(
             dict(
                 (k, v)
-                for k, v in six.iteritems(
-                    cls.Schema.dynamorm_validate(kwargs, partial=True)
-                )
+                for k, v in cls.Schema.dynamorm_validate(kwargs, partial=True).items()
                 if k in kwargs
             )
         )
@@ -473,7 +468,7 @@ class DynaModel(object):
         # TODO: Support the __ syntax to do deeply nested updates
         updates = dict(
             (k, getattr(self, k))
-            for k, v in six.iteritems(self._validated_data)
+            for k, v in self._validated_data.items()
             if getattr(self, k) != v
         )
 
@@ -561,7 +556,7 @@ class DynaModel(object):
 
             # update our local attrs to match what we updated
             partial_model = self.new_from_raw(resp["Attributes"], partial=True)
-            for key, _ in six.iteritems(resp["Attributes"]):
+            for key, _ in resp["Attributes"].items():
                 # elsewhere in Dynamorm, models can be created without all fields (non-"strict" mode in Schematics),
                 # so we drop unknown keys here to be consistent
                 if hasattr(partial_model, key):

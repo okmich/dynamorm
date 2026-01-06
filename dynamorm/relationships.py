@@ -115,12 +115,9 @@ Here's an example of how you could model the `Forum Application`_ from the Dynam
         )
 """
 
-import six
-
 from .signals import pre_save, post_save, pre_update, post_update
 
 
-@six.python_2_unicode_compatible
 class DefaultBackReference(object):
     """When given a relationship the string representation of this will be a "python" string name of the model the
     relationship exists on.
@@ -251,7 +248,7 @@ class OneToOne(Relationship):
             raise TypeError("%s is not an instance of %s", new_instance, self.other)
 
         query = self.query(obj)
-        for key, val in six.iteritems(query):
+        for key, val in query.items():
             setattr(new_instance, key, val)
 
         self.other_inst = new_instance

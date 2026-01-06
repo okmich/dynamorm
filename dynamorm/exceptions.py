@@ -1,7 +1,5 @@
 import logging
 
-import six
-
 log = logging.getLogger(__name__)
 
 
@@ -15,7 +13,6 @@ class DynaModelException(DynamoException):
     """Base exception for DynaModel problems"""
 
 
-@six.python_2_unicode_compatible
 class ValidationError(DynaModelException):
     """Schema validation failed"""
 
